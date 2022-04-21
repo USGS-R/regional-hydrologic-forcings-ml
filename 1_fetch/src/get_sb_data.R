@@ -233,6 +233,31 @@ calc_avg_land_cover <- function(sb_data, sohl, nlcd) {
 
   message("reclassifying SOHL and NLCD land cover classes")
   
+  sb_data <- read_csv(sb_data, show_col_types = FALSE) %>%
+    suppressMessages()
+  nlcd_data_raw <- sb_data %>%
+    select(COMID, contains("_NLCD")) %>%
+    pivot_longer(!COMID, names_to = "name", values_to = "value") %>%
+    mutate(unit = str_sub(name, 1, 3), 
+           year = as.numeric(paste0("20", str_sub(name, 9, 10))), 
+           class = as.numeric(str_sub(name, 12, 13)))
+  sohl_data_raw <- sb_data %>%
+    select(COMID, contains("_SOHL")) %>%
+    pivot_longer(!COMID, names_to = "name", values_to = "value") %>%
+    mutate(unit = str_sub(name, 1, 3), 
+           year = as.numeric(paste0("19", str_sub(name, 9, 10))),
+           class = as.numeric(str_sub(name, 12)))
+  nlcd_reclass <- nlcd %>%
+    select(class = NLCD_value, new_class = Reclassify_match) %>%
+    right_join(nlcd_data_raw)
+  sohl_reclass <- sohl %>%
+    select(class = FORESCE_value, new_class = Reclassify_match) %>%
+    right_join(sohl_data_raw)
+  land_cover <- bind_rows(sohl_reclass, nlcd_reclass) %>%
+    select(COMID, unit, year, new_class, value)
+  
+  
+  ## INSPECT TO MAKE SURE TIME SERIES MAKES SENSE (NO CRAZY JUMPS)
   
   
 }
