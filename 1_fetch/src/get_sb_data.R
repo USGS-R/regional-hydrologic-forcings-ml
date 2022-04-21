@@ -219,6 +219,24 @@ download_children <-function(sites, sb_table_reduced, dldir, workdir, outdir, ou
   return(return_df)
 }
 
+calc_avg_land_cover <- function(sb_data, sohl, nlcd) {
+  #'@description Reclassifies historic SOHL and NLCD land cover datasets then 
+  #'combines to create a single land cover classification scheme for entire
+  #'period of interest. The average upstream land cover classes for each reach
+  #'are calculated based on the period of record for the gage. 
+  #'
+  #'@param sb_data data frame of gages and landscape attributes from ScienceBase
+  #'@param sohl data frame of SOHL land cover classes and reclassifications
+  #'@param nlcd data frame of NLCD land cover classes and reclassifications
+  #'
+  #'@return ??
+
+  message("reclassifying SOHL and NLCD land cover classes")
+  
+  
+  
+}
+
 calc_avg_monthly_weather <- function(sb_data) {
   sb_data <- read_csv(sb_data, show_col_types = FALSE) %>%
     suppressMessages()

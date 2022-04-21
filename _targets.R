@@ -329,7 +329,9 @@ list(
   #combine, reclassify, and calculate average land covers for each gage
   tar_target(p1_avg_land_cover_g2, 
              {file_ind <- grep(p1_sb_data_g2_csv, pattern = "FAILS", invert = TRUE)
-             calc_avg_land_cover(sb_data = p1_sb_data_g2_csv[file_ind])
+             calc_avg_land_cover(sb_data = p1_sb_data_g2_csv[file_ind], 
+                                 sohl = p1_sb_sohl_table, 
+                                 nlcd = p1_sb_nlcd_table)
              }, 
              deployment = 'main',
              ),
