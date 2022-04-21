@@ -98,6 +98,10 @@ sb_parent_id <- '5669a79ee4b08895842a1d47'
 sb_var_list_path <- "1_fetch/in/FHWA-NHDVariableList.xlsx"
 sb_var_sheet <- "FY22-FHWA"
 
+#pre-defined reclassification tables for SOHL and NLCD land cover classes
+sb_sohl_path <- "1_fetch/in/Legend_FORESCE_Land_Cover.csv"
+sb_nlcd_path <- "1_fetch/in/Legend_NLCD_Land_Cover.csv"
+
 ###gages2.1 ref site list - not sure how to get this right from sharepoint, so the
 ##filepath is currently to onedrive.
 #gagesii_path <- "C:/Users/jsmith/OneDrive - DOI/Shared Documents - FHWA/General/Data/Gages2.1_RefSiteList.xlsx"
@@ -308,6 +312,18 @@ list(
                                out_file_name = "sb_data_g2.csv"),
              deployment = 'main',
              format = "file"
+             ),
+  
+  #read in SOHL land use reclassification table
+  tar_target(p1_sb_sohl_table,
+             read_csv(file = sb_sohl_path, show_col_types = FALSE),
+             deployment = 'main'
+             ),
+  
+  #read in NLCD land use reclassification table
+  tar_target(p1_sb_nlcd_table,
+             read_csv(file = sb_nlcd_path, show_col_types = FALSE),
+             deployment = 'main'
              ),
   
   ##convert monthly weather data by year to average monthly weather
