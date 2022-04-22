@@ -229,35 +229,60 @@ calc_avg_land_cover <- function(sb_data, sohl, nlcd) {
   #'@param sohl data frame of SOHL land cover classes and reclassifications
   #'@param nlcd data frame of NLCD land cover classes and reclassifications
   #'
-  #'@return ??
+  #'@return target to be joined in final landscape attribute table
 
-  message("reclassifying SOHL and NLCD land cover classes")
-  
   sb_data <- read_csv(sb_data, show_col_types = FALSE) %>%
     suppressMessages()
-  nlcd_data_raw <- sb_data %>%
-    select(COMID, contains("_NLCD")) %>%
-    pivot_longer(!COMID, names_to = "name", values_to = "value") %>%
-    mutate(unit = str_sub(name, 1, 3), 
-           year = as.numeric(paste0("20", str_sub(name, 9, 10))), 
-           class = as.numeric(str_sub(name, 12, 13)))
-  sohl_data_raw <- sb_data %>%
-    select(COMID, contains("_SOHL")) %>%
-    pivot_longer(!COMID, names_to = "name", values_to = "value") %>%
-    mutate(unit = str_sub(name, 1, 3), 
-           year = as.numeric(paste0("19", str_sub(name, 9, 10))),
-           class = as.numeric(str_sub(name, 12)))
-  nlcd_reclass <- nlcd %>%
-    select(class = NLCD_value, new_class = Reclassify_match) %>%
-    right_join(nlcd_data_raw)
-  sohl_reclass <- sohl %>%
-    select(class = FORESCE_value, new_class = Reclassify_match) %>%
-    right_join(sohl_data_raw)
-  land_cover <- bind_rows(sohl_reclass, nlcd_reclass) %>%
-    select(COMID, unit, year, new_class, value)
+  
+  lc_codes <- c("SOHL", "NLCD")
+  lc_years <- c(19, 20)
+  lc_data <- list()
+  for (i in 1:length(lc_codes)) {
+    data_raw <- sb_data %>%
+      select(COMID, contains(lc_codes[[i]])) %>%
+      pivot_longer(!COMID, names_to = "name", values_to = "value") %>%
+      mutate(data = str_sub(name, 5, 8),
+             unit = str_sub(name, 1, 3), 
+             year = as.numeric(paste0(lc_years[[i]], str_sub(name, 9, 10))), 
+             class = as.numeric(str_sub(name, 12)))
+    lc_data[[i]] <- data_raw
+  }
+  lc_data <- bind_rows(lc_data) %>%
+    group_by(COMID, data, unit, year, class) %>%
+    summarise(value = mean(value)) %>%
+    ungroup()
+  rm(lc_years, data_raw, i)
+  
+  reclass_sohl <- sohl %>%
+    select(class = FORESCE_value, new_class = Reclassify_match) 
+  reclass_nlcd <- nlcd %>%
+    select(class = NLCD_value, new_class = Reclassify_match)
+  reclass <- list(reclass_sohl, reclass_nlcd)
+  rm(reclass_sohl, reclass_nlcd)
+  
+  lc_reclass <- list()
+  for (i in 1:length(lc_codes)) {
+    data_reclass <- lc_data %>%
+      filter(data == lc_codes[[i]]) %>%
+      left_join(reclass[[i]]) %>%
+      group_by(COMID, unit, year, new_class) %>%
+      summarise(value = sum(value, na.rm = TRUE)) %>%
+      ungroup()
+    lc_reclass[[i]] <- data_reclass
+  }
+  lc_reclass <- bind_rows(lc_reclass)
+  rm(data_reclass, i)
+  
+  qa_lc_sum_year <- lc_reclass %>%
+    group_by(COMID, unit, year) %>%
+    summarise(lc_sum = sum(value, na.rm = TRUE)) %>%
+    ungroup() %>%
+    filter(lc_sum < 99 | lc_sum > 101)
+  qa_lc_sum_year_comid <- unique(qa_lc_sum_year$COMID)
+
   
   
-  ## INSPECT TO MAKE SURE TIME SERIES MAKES SENSE (NO CRAZY JUMPS)
+  ## changes across year major jumps in new class percentages
   
   
 }
