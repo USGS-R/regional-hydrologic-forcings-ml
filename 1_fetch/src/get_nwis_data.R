@@ -32,16 +32,75 @@ filter_complete_years <- function(screen_daily_flow, complete_years){
   return(keep_sites)
 }
 
-get_nwis_daily_data <- function(site_num, outdir, parameterCd, startDate, endDate){
+get_nwis_daily_data <- function(site_num, outdir, parameterCd, 
+                                startDate, endDate, timeout = 60){
+  #'@description downloads daily NWIS data and renames columns. 
+  #'Download is retried 3 times if it takes longer than timeout time. An error 
+  #'message is printed if it does not succeed.
+  #'
+  #'@param site_num character string ID number for the NWIS site to check
+  #'@param outdir file path to save the downloaded data
+  #'@param parameterCd NWIS parameter code
+  #'@param startDate earliest date to download
+  #'@param endDate latest date to download
+  #'@param timeout timeout time in seconds
+  #'
+  #'@return filepath to csv of downloaded data
+  
   message(paste('starting site', site_num))
-  ##read daily NWIS data, and save to csv file.
-  data_out <- readNWISdv(site_num, parameterCd, startDate, endDate)
+  
+  #use tryCatch to handle odd download hangs
+  #set counter for number of retries - we'll stop after 3 retries
+  counter <- 0
+  while (counter < 3){
+    ##read daily NWIS data, and save to csv file.
+    data_out <- catch_download_timeout_daily(timeout, site_num, parameterCd, 
+                                       startDate, endDate)
+    if(is.null(data_out)){
+      counter <- counter + 1
+      if (counter == 3){
+        stop(paste('Daily data download for site', site_num, 
+                   'timed out after', timeout, 
+                   'seconds. Increase time or investigate this site.'))
+      }
+    }else{
+      #successful download. Break loop by setting counter to 3.
+      counter <- 3
+    }
+  }
   ##renaming column names for discharge and discharge_cd
   names(data_out)[grep(pattern="X_.*\\cd", x=names(data_out))] <- "discharge_cd"
   names(data_out)[grep(pattern="X_",x=names(data_out))] <- "discharge"
   filepath <- file.path(outdir, paste0(site_num, "_dv.csv"))
   write_csv(data_out, file=filepath)
   return(filepath)
+}
+
+catch_download_timeout_daily <- function(time, site_num, parameterCd, 
+                                         startDate, endDate){
+  #'@description downloads daily NWIS data.
+  #'
+  #'@param time timeout time in seconds
+  #'@param site_num character string ID number for the NWIS site to check
+  #'@param parameterCd NWIS parameter code
+  #'@param startDate earliest date to download
+  #'@param endDate latest date to download
+  #'
+  #'@return table of downloaded data if successful. NA if download resulted in an error
+  
+  tryCatch(
+    expr = {result <- R.utils::withTimeout(expr = readNWISdv(site_num, parameterCd, 
+                                                      startDate, endDate), 
+                                    timeout = time, 
+                                    onTimeout = 'error')
+    message('Download successful.')
+    return(result)
+    },
+    error = function(e){
+      message('Download timed out. Retrying download.')
+      return(NULL)
+    }
+  )
 }
 
 get_daily_flow_log <- function(files_in, file_out) {
@@ -62,10 +121,41 @@ get_daily_flow_log <- function(files_in, file_out) {
   return(file_out)
 }
 
-get_nwis_peak_data <- function(site_num, outdir, startDate, endDate){
+get_nwis_peak_data <- function(site_num, outdir, startDate, endDate, 
+                               timeout = 60){
+  #'@description downloads peak NWIS data and renames columns. 
+  #'Download is retried 3 times if it takes longer than timeout time. An error 
+  #'message is printed if it does not succeed.
+  #'
+  #'@param site_num character string ID number for the NWIS site to check
+  #'@param outdir file path to save the downloaded data
+  #'@param startDate earliest date to download
+  #'@param endDate latest date to download
+  #'@param timeout timeout time in seconds
+  #'
+  #'@return filepath to csv of downloaded data
+  
   message(paste('starting site', site_num))
-  ##read NWIS peak data, and save to csv file.
-  data_out <- readNWISpeak(site_num, startDate, endDate)
+  
+  #use tryCatch to handle odd download hangs
+  #set counter for number of retries - we'll stop after 3 retries
+  counter <- 0
+  while (counter < 3){
+    ##read NWIS peak data, and save to csv file.
+    data_out <- catch_download_timeout_peak(timeout, site_num, startDate, endDate)
+    
+    if(is.null(data_out)){
+      counter <- counter + 1
+      if (counter == 3){
+        stop(paste('Daily data download for site', site_num, 
+                   'timed out after', timeout, 
+                   'seconds. Increase time or investigate this site.'))
+      }
+    }else{
+      #successful download. Break loop by setting counter to 3.
+      counter <- 3
+    }
+  }
   
   ##Removing any NA dates or peak_va values - dates are returned as NA if day of occurrence is not known
   ## and peak_va is sometimes returned as NA if the gage height is known but not the discharge.
@@ -74,6 +164,31 @@ get_nwis_peak_data <- function(site_num, outdir, startDate, endDate){
   filepath <- file.path(outdir, paste0(site_num, "_pk.csv"))
   write_csv(data_out, file=filepath)
   return(filepath)
+}
+
+catch_download_timeout_peak <- function(time, site_num, 
+                                         startDate, endDate){
+  #'@description downloads NWIS peak flow data.
+  #'
+  #'@param time timeout time in seconds
+  #'@param site_num character string ID number for the NWIS site to check
+  #'@param startDate earliest date to download
+  #'@param endDate latest date to download
+  #'
+  #'@return table of downloaded data if successful. NA if download resulted in an error
+  
+  tryCatch(
+    expr = {result <- R.utils::withTimeout(expr = readNWISpeak(siteNumbers = site_num, 
+                                                               startDate = startDate, 
+                                                               endDate = endDate), 
+                                           timeout = time, 
+                                           onTimeout = 'error')
+    return(result)
+    },
+    error = function(e){
+      return(NULL)
+    }
+  )
 }
 
 get_peak_flow_log <- function(files_in, file_out) {

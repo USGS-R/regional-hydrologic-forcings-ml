@@ -13,6 +13,9 @@ _targets
 rstudio*
 .config
 
+#Gages data
+Gages2.1_RefSiteList.xlsx
+
 #R plots
 Rplots.pdf
 
