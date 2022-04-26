@@ -121,7 +121,12 @@ reduce_sb_table <- function(sb_table_full, sb_var_list, outdir) {
   #additional IDs to get missing values
   #if there are missing values, edit this function with the IDs you want to add
   #or, edit the sb_var_list with the IDs you want.
-  retain_ids <- c()
+  retain_ids <- c("5734acafe4b0dae0d5de622d", 
+                  "5730f062e4b0dae0d5db1fbe", 
+                  "573362bce4b0dae0d5dd6193", 
+                  "574ddc8ce4b07e28b66901b3",
+                  "574f3e86e4b0ee97d51abf31",
+                  "574f238fe4b0ee97d51a8916")
   
   retain_sb_table <- sb_table_full[sb_table_full$id %in% c(sbid, retain_ids),]
   

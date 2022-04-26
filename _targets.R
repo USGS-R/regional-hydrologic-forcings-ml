@@ -98,10 +98,6 @@ sb_parent_id <- '5669a79ee4b08895842a1d47'
 sb_var_list_path <- "1_fetch/in/FHWA-NHDVariableList.xlsx"
 sb_var_sheet <- "FY22-FHWA"
 
-#pre-defined reclassification tables for SOHL and NLCD land cover classes
-sb_sohl_path <- "1_fetch/in/Legend_FORESCE_Land_Cover.csv"
-sb_nlcd_path <- "1_fetch/in/Legend_NLCD_Land_Cover.csv"
-
 ###gages2.1 ref site list - not sure how to get this right from sharepoint, so the
 ##filepath is currently to onedrive.
 #gagesii_path <- "C:/Users/jsmith/OneDrive - DOI/Shared Documents - FHWA/General/Data/Gages2.1_RefSiteList.xlsx"
