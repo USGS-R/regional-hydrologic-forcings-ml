@@ -219,72 +219,36 @@ download_children <-function(sites, sb_table_reduced, dldir, workdir, outdir, ou
   return(return_df)
 }
 
-calc_avg_land_cover <- function(sb_data, sohl, nlcd) {
-  #'@description Reclassifies historic SOHL and NLCD land cover datasets then 
-  #'combines to create a single land cover classification scheme for entire
-  #'period of interest. The average upstream land cover classes for each reach
-  #'are calculated based on the period of record for the gage. 
+calc_avg_land_cover <- function(sb_data) {
+  #'@description Combines decadal modeled historic land-use land-cover data from
+  #'SOHL datasets spanning from 1940 - 2000. Calculates long-term average.
   #'
   #'@param sb_data data frame of gages and landscape attributes from ScienceBase
-  #'@param sohl data frame of SOHL land cover classes and reclassifications
-  #'@param nlcd data frame of NLCD land cover classes and reclassifications
   #'
   #'@return target to be joined in final landscape attribute table
 
   sb_data <- read_csv(sb_data, show_col_types = FALSE) %>%
     suppressMessages()
-  
-  lc_codes <- c("SOHL", "NLCD")
-  lc_years <- c(19, 20)
-  lc_data <- list()
-  for (i in 1:length(lc_codes)) {
-    data_raw <- sb_data %>%
-      select(COMID, contains(lc_codes[[i]])) %>%
-      pivot_longer(!COMID, names_to = "name", values_to = "value") %>%
-      mutate(data = str_sub(name, 5, 8),
-             unit = str_sub(name, 1, 3), 
-             year = as.numeric(paste0(lc_years[[i]], str_sub(name, 9, 10))), 
-             class = as.numeric(str_sub(name, 12)))
-    lc_data[[i]] <- data_raw
-  }
-  lc_data <- bind_rows(lc_data) %>%
-    group_by(COMID, data, unit, year, class) %>%
+  sohl_lc <- sb_data %>%
+    select(COMID, 
+           contains("SOHL40"), contains("SOHL50"), contains("SOHL60"),
+           contains("SOHL70"), contains("SOHL80"), contains("SOHL90"), 
+           contains("SOHL00")) %>%
+    pivot_longer(!COMID, names_to = "name", values_to = "value") %>%
+    mutate(unit = str_sub(name, 1, 3), 
+           year = if_else(str_sub(name, 9, 10) == "00", 2000, 
+                          as.numeric(paste0("19", str_sub(name, 9, 10)))), 
+           class = as.numeric(str_sub(name, 12))) %>%
+    group_by(COMID, unit, year, class) %>%
     summarise(value = mean(value)) %>%
     ungroup()
-  rm(lc_years, data_raw, i)
-  
-  reclass_sohl <- sohl %>%
-    select(class = FORESCE_value, new_class = Reclassify_match) 
-  reclass_nlcd <- nlcd %>%
-    select(class = NLCD_value, new_class = Reclassify_match)
-  reclass <- list(reclass_sohl, reclass_nlcd)
-  rm(reclass_sohl, reclass_nlcd)
-  
-  lc_reclass <- list()
-  for (i in 1:length(lc_codes)) {
-    data_reclass <- lc_data %>%
-      filter(data == lc_codes[[i]]) %>%
-      left_join(reclass[[i]]) %>%
-      group_by(COMID, unit, year, new_class) %>%
-      summarise(value = sum(value, na.rm = TRUE)) %>%
-      ungroup()
-    lc_reclass[[i]] <- data_reclass
-  }
-  lc_reclass <- bind_rows(lc_reclass)
-  rm(data_reclass, i)
-  
-  qa_lc_sum_year <- lc_reclass %>%
+
+  qa_lc_sum_year <- sohl_lc %>%
     group_by(COMID, unit, year) %>%
-    summarise(lc_sum = sum(value, na.rm = TRUE)) %>%
+    summarise(lc_sum = sum(value)) %>%
     ungroup() %>%
     filter(lc_sum < 99 | lc_sum > 101)
   qa_lc_sum_year_comid <- unique(qa_lc_sum_year$COMID)
-
-  
-  
-  ## changes across year major jumps in new class percentages
-  
-  
 }
 
 calc_avg_monthly_weather <- function(sb_data) {
