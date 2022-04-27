@@ -240,15 +240,32 @@ calc_avg_land_cover <- function(sb_data) {
                           as.numeric(paste0("19", str_sub(name, 9, 10)))), 
            class = as.numeric(str_sub(name, 12))) %>%
     group_by(COMID, unit, year, class) %>%
-    summarise(value = mean(value)) %>%
-    ungroup()
-
+    summarise(value = mean(value), .groups = "drop") %>%
+    mutate(new_class = case_when(class == 1 ~ "WATER", class == 2 ~ "DEVELOPED", 
+                                 class == 3 ~ "FOREST", class == 4 ~ "FOREST", 
+                                 class == 5 ~ "FOREST", class == 6 ~ "MINING", 
+                                 class == 7 ~ "BARREN", class == 8 ~ "FOREST", 
+                                 class == 9 ~ "FOREST", class == 10 ~ "FOREST", 
+                                 class == 11 ~ "GRASSLAND", class == 12 ~ "SHRUBLAND", 
+                                 class == 13 ~ "CROPLAND", class == 14 ~ "HAY/PASTURE", 
+                                 class == 15 ~ "WETLAND", class == 16 ~ "WETLAND", 
+                                 class == 17 ~ "ICE/SNOW")) %>%
+    group_by(COMID, unit, year, new_class) %>%
+    summarise(value = sum(value), .groups = "drop")
+    
   qa_lc_sum_year <- sohl_lc %>%
     group_by(COMID, unit, year) %>%
-    summarise(lc_sum = sum(value)) %>%
-    ungroup() %>%
+    summarise(lc_sum = sum(value), .groups = "drop") %>%
     filter(lc_sum < 99 | lc_sum > 101)
   qa_lc_sum_year_comid <- unique(qa_lc_sum_year$COMID)
+  
+  sohl_lc <- sohl_lc %>%
+    group_by(COMID, unit, new_class) %>%
+    summarise(value = mean(value), .groups = "drop") %>%
+    mutate(label = paste0(unit, "_SOHL_", new_class)) %>%
+    select(COMID, label, value) %>%
+    pivot_wider(names_from = "label", values_from = "value")
+  return(sohl_lc)
 }
 
 calc_avg_monthly_weather <- function(sb_data) {
