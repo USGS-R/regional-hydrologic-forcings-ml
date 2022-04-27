@@ -263,6 +263,26 @@ calc_avg_land_cover <- function(sb_data) {
   return(sohl_lc)
 }
 
+calc_avg_dams <- function(sb_data) {
+  sb_data <- read_csv(sb_data, show_col_types = FALSE) %>%
+    suppressMessages()
+  dams <- sb_data %>%
+    select(COMID, contains("NDAMS"), contains("STORAGE"), contains("MAJOR")) %>%
+    pivot_longer(!COMID, names_to = "name", values_to = "value") %>%
+    mutate(unit = str_sub(name, 1, 3), 
+           feature = str_sub(name, 5, -5),
+           year = str_sub(name, -4)) %>%
+    filter(year <= 2010) %>%
+    group_by(COMID, unit, feature, year) %>%
+    summarise(value = mean(value), .groups = "drop") %>%
+    group_by(COMID, unit, feature) %>%
+    summarise(value = mean(value), .groups = "drop") %>%
+    mutate(label = paste0(unit, "_", feature)) %>%
+    select(COMID, label, value) %>%
+    pivot_wider(names_from = label, values_from = value)
+  return(dams)
+}
+
 calc_avg_monthly_weather <- function(sb_data) {
   sb_data <- read_csv(sb_data, show_col_types = FALSE) %>%
     suppressMessages()
