@@ -1,12 +1,17 @@
-#Function to compute the clusters for seasonal metrics
-# written to be branched over the metric
-#metric_mat - p1_FDC_metrics_season. rows are gauges, columns are seasonal metrics
-#metric - the name of the metric without the _s season at the end
-#dist_method - the distance computation for dist()
 seasonal_metric_cluster <- function(metric_mat, metric, 
                                     dist_method = 'euclidean',
                                     quantile_agg = FALSE
                                     ){
+  #' @description computes clusters for seasonal metrics 
+  #' written to be branched over the metric
+  #' 
+  #' @param metric_mat p1_FDC_metrics_season. rows are gauges, columns are seasonal metrics
+  #' @param metric the name of the metric without the _s season at the end
+  #' @param dist_method the distance computation for dist()
+  #' @param quantile_agg logical for whether or not quantiles are aggregated
+  #'  
+  #' @return hclust clusters object
+  
   #Select all of the seasonal columns for this metric
   if(quantile_agg){
     #get all of the quantiles into a vector
@@ -16,7 +21,8 @@ seasonal_metric_cluster <- function(metric_mat, metric,
     metric_mat <- metric_mat[, c(1,col_inds)]
   }else{
     metric_mat <- metric_mat[, c(1,grep(x = colnames(metric_mat), 
-                                        pattern = paste0(metric,'_')))]
+                                        pattern = paste0(metric,'_'),
+                                        fixed = TRUE))]
   }
   
   #Scaling of metrics should not be necessary because the metrics are on [0,1]
@@ -42,9 +48,14 @@ seasonal_metric_cluster <- function(metric_mat, metric,
   return(clusts)
 }
 
-#Function to extract the best cluster method for each metric
-#clusts is the list output from seasonal_metric_cluster
 select_cluster_method <- function(clusts, quantile_agg = FALSE){
+  #' @description Function to extract the best cluster method for each metric
+  #' 
+  #' @param clusts list output from seasonal_metric_cluster
+  #' @param quantile_agg logical for whether or not quantiles are aggregated
+  #'  
+  #' @return table reporting the best cluster method for each metric
+  
   #data.frame of the metric, method, and ac value
   df <- matrix(nrow = length(clusts), ncol = 3, data = '')
   for (i in 1:nrow(df)){
@@ -69,11 +80,6 @@ select_cluster_method <- function(clusts, quantile_agg = FALSE){
   return(df_max)
 }
 
-#Function to compute cluster diagnostics
-#kmin, kmax - min and max number of clusters to use
-#alpha - significance level
-#boot - number of bootstrap replicates
-#index - the NbClust index to compute. 'all' computes all except those with long compute times.
 compute_cluster_diagnostics <- function(clusts, metric_mat,
                                         kmin, kmax, alpha, boot = 50,
                                         index = 'all',
@@ -81,6 +87,23 @@ compute_cluster_diagnostics <- function(clusts, metric_mat,
                                         clust_method = 'ward.D2',
                                         quantile_agg = FALSE
                                         ){
+  #' @description Function to compute cluster diagnostic metrics
+  #' 
+  #' @param clusts list output from seasonal_metric_cluster
+  #' @param metric_mat p1_FDC_metrics_season. rows are gauges, columns are seasonal metrics
+  #' @param kmin,kmax min and max number of clusters to use
+  #' @param alpha significance level
+  #' @param boot number of bootstrap replicates
+  #' @param index the NbClust index to compute. 'all' computes all except those 
+  #' with long compute times.
+  #' @param dist_method the distance computation for dist()
+  #' @param clust_method the cluster method to use. 
+  #' Character of one of the named list elements of clusts.
+  #' @param quantile_agg logical for whether or not quantiles are aggregated
+  #'  
+  #' @return list containing the flow metric name, the NBclust metric values,
+  #' and the gap statistic value
+  
   clusts <- clusts[[clust_method]]
   
   #Select all of the seasonal columns for this metric
@@ -90,7 +113,8 @@ compute_cluster_diagnostics <- function(clusts, metric_mat,
     metric_mat <- metric_mat[, col_inds]
   }else{
     metric_mat <- metric_mat[, grep(x = colnames(metric_mat), 
-                                    pattern = paste0(clusts$metric,'_'))]
+                                    pattern = paste0(clusts$metric,'_'),
+                                    fixed = TRUE)]
   }
   
   #Compute NbClust cluster diagnostics
@@ -112,12 +136,24 @@ compute_cluster_diagnostics <- function(clusts, metric_mat,
               gap_stat = gap_stat))
 }
 
-#Function to make cluster diagnostic panel plot
 plot_cluster_diagnostics <- function(clusts, metric_mat, nbclust_metrics,
                                      dist_method = 'euclidean',
                                      clust_method = 'ward.D2',
                                      dir_out,
                                      quantile_agg = FALSE){
+  #' @description Function to make a cluster diagnostic panel plot
+  #' 
+  #' @param clusts list output from seasonal_metric_cluster
+  #' @param metric_mat p1_FDC_metrics_season. rows are gauges, columns are seasonal metrics
+  #' @param nbclust_metrics output from compute_cluster_diagnostics
+  #' @param dist_method the distance computation for dist()
+  #' @param clust_method the cluster method to use. 
+  #' Character of one of the named list elements of clusts.
+  #' @param dir_out directory to save plot png files
+  #' @param quantile_agg logical for whether or not quantiles are aggregated
+  #'  
+  #' @return filepaths to the plots
+  
   clusts <- list(clusts[[clust_method]])
   
   fileout <- vector('character', length = length(clusts))
@@ -132,7 +168,8 @@ plot_cluster_diagnostics <- function(clusts, metric_mat, nbclust_metrics,
       clusts[[cl]]$metric <- str_c(clusts[[cl]]$metric, collapse = '-')
     }else{
       metric_mat <- metric_mat[, c(1,grep(x = colnames(metric_mat), 
-                                          pattern = paste0(clusts[[cl]]$metric,'_')))]
+                                          pattern = paste0(clusts[[cl]]$metric,'_'),
+                                          fixed = TRUE))]
     }
     
     fileout[cl] <- file.path(dir_out, 
@@ -172,10 +209,22 @@ plot_cluster_diagnostics <- function(clusts, metric_mat, nbclust_metrics,
   return(fileout)
 }
 
-#Function to add the cluster numbers to gages
 add_cluster_to_gages <- function(gages, screened_sites, clusts, best_clust,
                                  min_clusts, max_clusts, by_clusts, 
                                  quantile_agg = FALSE){
+  #' @description Function to add the cluster numbers to gages
+  #' 
+  #' @param gages dataframe of the gages (rows)
+  #' @param screened_sites the sites used in the cluster analysis
+  #' @param clusts cluster analysis results from seasonal_metric_cluster
+  #' @param best_clust the best cluster analysis method
+  #' @param min_clusts minimum number of clusters to add to gages as columns
+  #' @param max_clusts maximum number of clusters to add to gages as columns
+  #' @param by_clusts increment of clusters to add to gages as columns
+  #' @param quantile_agg logical for whether or not quantiles are aggregated
+  #'  
+  #' @return gages with columns for the cluster analysis methods
+  
   #Select the gages that have clusters computed
   gages_clusts <- gages[gages$ID %in% screened_sites, "ID"]
   
@@ -202,13 +251,6 @@ add_cluster_to_gages <- function(gages, screened_sites, clusts, best_clust,
   return(gages_clusts)
 }
 
-#Function to plot the average seasonal distribution for all sites, or
-#plot the average seasonal distribution for sites in the cluster
-#by_cluster - makes a plot with panels for each cluster
-#panel_plot - makes a panel plot instead of individual plots
-#by_quantile - does metric contain quantiles? if TRUE, 
-#plots will be made for each streamflow metric instead of averaging over all streamflow metrics
-#quantile_agg - are quantiles in metric a vector to be aggregated?
 plot_seasonal_barplot <- function(metric_mat, metric, 
                                   season_months,
                                   by_cluster = FALSE,
@@ -216,8 +258,25 @@ plot_seasonal_barplot <- function(metric_mat, metric,
                                   panel_plot = NULL,
                                   dir_out,
                                   quantile_agg = FALSE,
-                                  by_quantile = FALSE)
-  {
+                                  by_quantile = FALSE){
+  #' @description Function to plot the average seasonal distribution for all sites,
+  #' or plot the average seasonal distribution for sites in the cluster
+  #' 
+  #' @param metric_mat p1_FDC_metrics_season. rows are gauges, columns are seasonal metrics
+  #' @param metric character of the metric to plot
+  #' @param season_months numeric vector of 12 months in water year order
+  #' @param by_cluster logical, makes a plot with panels for each cluster
+  #' @param cluster_table output of add_cluster_to_gages
+  #' @param panel_plot makes a panel plot instead of individual plots
+  #' @param dir_out directory to save plot png files
+  #' @param quantile_agg logical for whether or not quantiles in metric are 
+  #' a vector to be aggregated
+  #' @param by_quantile logical, does metric contain quantiles? if TRUE, 
+  #' plots will be made for each streamflow metric instead of averaging over all 
+  #' streamflow metrics
+  #'  
+  #' @return filepaths to the plots
+  
   if(by_cluster & is.null(cluster_table)){
     stop('cluster_table must be supplied to plot by clusters.')
   }
@@ -231,7 +290,8 @@ plot_seasonal_barplot <- function(metric_mat, metric,
     metric_mat <- metric_mat[, c(1,col_inds)]
   }else{
     metric_mat <- metric_mat[, c(1,grep(x = colnames(metric_mat), 
-                                        pattern = paste0(metric,'_')))]
+                                        pattern = paste0(metric,'_'),
+                                        fixed = TRUE))]
   }
   
   #get the month labels
@@ -243,7 +303,8 @@ plot_seasonal_barplot <- function(metric_mat, metric,
   if (by_cluster){
     #Select all of the column names used for this metric
     cluster_table <- cluster_table[, c(1,grep(x = colnames(cluster_table), 
-                                              pattern = paste0(metric,'_')))]
+                                              pattern = paste0(metric,'_'),
+                                              fixed = TRUE))]
     
     #Get the total number of clusters in all of the columns. 
     #There will be 2 elements after splitting
@@ -377,6 +438,7 @@ plot_seasonal_barplot <- function(metric_mat, metric,
 }
 
 
+#Not currently used 
 #Function to plot the cuts in trees from kmin to kmax clusters
 #clusts is the output from hclust
 plot_cuttree <- function(clusts, kmin, kmax, seq_by, dir_out){
@@ -394,10 +456,19 @@ plot_cuttree <- function(clusts, kmin, kmax, seq_by, dir_out){
 }
 
 
-#Function to make a map of the resulting clusters
 #can add bounding boxes for clusters as argument
 plot_cluster_map <- function(gages, cluster_table, screened_sites, dir_out,
                              facet = FALSE){
+  #' @description Function to make a map of the resulting clusters
+  #' 
+  #' @param gages dataframe of the gages (rows)
+  #' @param cluster_table output of add_cluster_to_gages
+  #' @param screened_sites the sites used in the cluster analysis
+  #' @param dir_out directory to save plot png files
+  #' @param facet logical for whether or not to make a facet wrap over the clusters
+  #'  
+  #' @return filepaths to the plots
+  
   ncol_gages <- ncol(gages)
   
   #get only sites with metrics computed
@@ -448,21 +519,40 @@ plot_cluster_map <- function(gages, cluster_table, screened_sites, dir_out,
 }
 
 
-#get the column indices from metric_mat with these metric patterns
 get_column_inds <- function(metric, metric_mat){
+  #' @description gets the column indices from metric_mat with these metric patterns
+  #' 
+  #' @param metric character string to search for in the column names of metric_mat
+  #' @param metric_mat p1_FDC_metrics_season. rows are gauges, columns are seasonal metrics
+  #'  
+  #' @return vector of column indices
+  
   col_inds <- vector('numeric', length = 0L)
   for (m in 1:length(metric)){
     col_inds <- c(col_inds, grep(x = colnames(metric_mat), 
-                                 pattern = paste0(metric[m],'_')))
+                                 pattern = paste0(metric[m],'_'),
+                                 fixed = TRUE))
   }
   return(col_inds)
 }
 
-#get column means for use in the panel plot
 get_colmeans_panel_plt <- function(metric_names, metric_mat, by_quantile, 
                                    quantile_agg, cluster_table, ki, i,
-                                   season_months
-){
+                                   season_months){
+  #' @description computes column means for use in the panel plot
+  #' 
+  #' @param metric_names the names of the metrics for which to compute column means
+  #' @param metric_mat p1_FDC_metrics_season. rows are gauges, columns are seasonal metrics
+  #' @param by_quantile 
+  #' @param quantile_agg logical for whether or not quantiles are aggregated
+  #' @param cluster_table output of add_cluster_to_gages
+  #' @param ki number of clusters
+  #' @param i cluster_table column index to use
+  #' @param season_months numeric vector of 12 months in water year order
+  #'  
+  #' @return dataframe with columns for the colmeans, season, cluster, ymin, ymax, 
+  #' label_order, and metric name.
+  
   #Determine the dimensions of the data frame based on what kind of plot is being made
   if(by_quantile){
     #panel plots are made for each streamflow metric name in each analysis, ki

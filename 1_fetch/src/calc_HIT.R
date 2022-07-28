@@ -1,9 +1,28 @@
-#Add description
 calc_HITmetrics <- function(site_num, clean_daily_flow, yearType, 
                             drainArea_tab, floodThreshold_tab, stat_vec,
                             save_metrics = NULL, norm_DA = NULL, 
                             norm_med_DA = NULL, norm_ml17 = NULL,
                             digits = 3, out_format = 'EflowStats'){
+  #' @description wrapper function to compute HIT flow metrics
+  #' 
+  #' @param site_num character string containing the gage number. Must match a 
+  #' row in the column "site_no" of clean_daily flow
+  #' @param clean_daily_flow table of flows for each gage
+  #' @param yearType either 'water' for water year (month 10), or a numeric month
+  #' @param drainArea_tab table of drainage areas
+  #' @param floodThreshold_tab table of drainage areas
+  #' @param stat_vec character vector of the HIT metrics to compute (e.g., "calc_magAverage")
+  #' @param save_metrics character vector of the metrics to save
+  #' @param norm_DA character vector of metric names to normalize by dividing by drainage area
+  #' @param norm_med_DA character vector of metric names to normalize by multiplying 
+  #' by the annual median discharge and dividing by the drainage area
+  #' @param norm_ml17 NULL or 'ml17' for special normalization for the ml17 metric
+  #' @param digits number of decimal places to use in round
+  #' @param out_format format for the output table of metrics. The default matches
+  #' the EflowStats format. Use 'pivot' for a simpler table.
+  #' 
+  #' @return table of HIT metrics for each gage
+  
   message(paste('starting site', site_num))
   data <- clean_daily_flow %>%
     filter(site_no == site_num)
