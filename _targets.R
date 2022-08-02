@@ -41,6 +41,7 @@ dir.create('3_cluster/out/seasonal_plots/maps/by_quantiles', showWarnings = FALS
 dir.create('3_cluster/out/seasonal_plots/maps/by_agg_quantiles', showWarnings = FALSE)
 dir.create('5_EDA/out', showWarnings = FALSE)
 dir.create('5_EDA/out/metrics_plots', showWarnings = FALSE)
+dir.create('5_EDA/out/feature_plots', showWarnings = FALSE)
 dir.create('6_predict/out', showWarnings = FALSE)
 dir.create('6_predict/out/Boruta', showWarnings = FALSE)
 dir.create('6_predict/out/vip', showWarnings = FALSE)
@@ -58,6 +59,7 @@ source("1_fetch/src/moving_window_functions.R")
 source("3_cluster/src/seasonal_metric_cluster.R")
 source("4_setup_crossval/src/cross_validation_functions.R")
 source("5_EDA/src/EDA_metric_plots.R")
+source("5_EDA/src/EDA_feature_plots.R")
 source("5_EDA/src/select_features.R")
 source("6_predict/src/train_models.R")
 source("6_predict/src/plot_diagnostics.R")
@@ -823,6 +825,13 @@ list(
                                    ),
              map(p2_all_metrics_names),
              format="file"
+  ),
+  
+  #Maps and violin plots of feature variables
+  tar_target(p5_EDA_plots_features, 
+             make_EDA_feature_plots(feature_vars = p1_feature_vars_g2, 
+                                    out_dir = "5_EDA/out/feature_plots"), 
+             format = "file"
   ),
   
   #Down select features from full database
