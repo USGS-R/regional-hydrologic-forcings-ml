@@ -118,8 +118,15 @@ sb_var_ids_path <- "1_fetch/in/sb_var_ids.csv"
 gagesii_path <- "Gages2.1_RefSiteList.xlsx"
 
 #Drop the following gages from the dataset because they are not representative
-#pipeline, ditch, etc.
-drop_gages <- c('02084557', '09406300', '09512200', '10143500', '10172200')
+#pipeline, ditch, duplicate comids in gages2.1, spring, etc.
+drop_gages <- c('02084557', '09406300', '09512200', '10143500', '10172200', 
+                '01349711', '01362198', '01362380', '02322698', '04127918', 
+                '10336674', '10336675', '06190540')
+#Combine the following gages from the dataset because they are located on same
+#comid with unique periods or record
+combine_gages <- list(c('03584000', '06037000', '12209500'), 
+                      c('03584020', '06037100', '12209490'))
+names(combine_gages) <- c("to_be_combined", "assigned_rep")
 
 ##distance to search upstream for nested basins, in km.  note-the nhdplusTools function fails if this 
 ##value is 10000 or greater.
@@ -149,6 +156,7 @@ list(
              read_xlsx(p1_sites_g2_xlsx) %>% 
                mutate(ID = substr(ID, start=2, stop=nchar(ID))) %>%
                #drop 5 sites that are not representative (ditch, pipeline)
+               #and 7 sites that are duplicates on same comid
                filter(!(ID %in% drop_gages)),
              deployment = 'main'
   ),
@@ -192,7 +200,8 @@ list(
              format = "file"
   ),
   
-  ##prescreen data to remove provisional data and handle odd column names
+  ##prescreen data to remove provisional data and handle odd column names, and
+  ##combine records from gages with unique periods of record on same comid
   tar_target(p1_prescreen_daily_data, 
              prescreen_daily_data(p1_daily_flow_csv, prov_rm = TRUE),
              map(p1_daily_flow_csv),
@@ -221,12 +230,12 @@ list(
   
   ##select sites with enough complete years
   tar_target(p1_screened_site_list,
-             filter_complete_years(p1_screen_daily_flow, complete_years),
+             filter_complete_years(p1_screen_daily_flow, combine_gages, complete_years),
              deployment = 'main'
   ),
   ##seasonal
   tar_target(p1_screened_site_list_season,
-             filter_complete_years(p1_screen_daily_flow_season, complete_years),
+             filter_complete_years(p1_screen_daily_flow_season, combine_gages, complete_years),
              deployment = 'main'
   ),
   # tar_target(p1_screened_site_list_season_high,
@@ -325,7 +334,8 @@ list(
   ##merge and select feature variables from gagesii list
   tar_target(p1_feature_vars_g2, 
              prep_feature_vars(sb_var_data = p1_sb_data_g2_csv, 
-                               sites = p1_sites_g2, 
+                               sites_all = p1_sites_g2, 
+                               sites_screened = p1_screened_site_list, 
                                retain_vars = c("ID", "LAT", "LON",
                                  "npdes", "fwwd", "strg", "devl", "cndp")), 
              deployment = "main"

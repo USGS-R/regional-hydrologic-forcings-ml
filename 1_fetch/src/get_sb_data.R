@@ -115,7 +115,7 @@ get_sb_data_log <- function(sb_var_ids, file_out) {
   
 }
 
-prep_feature_vars <- function(sb_var_data, sites, retain_vars) {
+prep_feature_vars <- function(sb_var_data, sites_all, sites_screened, retain_vars) {
   
   #'@description joins all data downloaded from ScienceBase with sites of interest
   #'
@@ -124,15 +124,17 @@ prep_feature_vars <- function(sb_var_data, sites, retain_vars) {
   #'identifiers and names, and the 'get_sb_data()' function generates a list of .csv file
   #'locations containing the feature variable data from each ScienceBase identifier
   #'joined with the COMIDs contained in the 'sites' parameter
-  #'@param sites data frame with a COMID column including all reaches of interest
+  #'@param sites_all data frame with a COMID column including all reaches of interest
+  #'@param sites_screened list of sites that passed screening functions
   #'@param retain_vars character strings of additional column headers to keep in the 
   #'sites data frame
   #'
   #'@return data frame with COMID column appended by all feature variables of interest; 
   #'time-varying features converted to long-term averages where applicable
   
-  data <- sites %>%
+  data <- sites_all %>%
     select(COMID, all_of(retain_vars)) %>%
+    filter(ID %in% sites_screened) %>%
     mutate(across(where(is.character)  & !starts_with('ID'), as.numeric))
   
   if("ID" %in% retain_vars) {

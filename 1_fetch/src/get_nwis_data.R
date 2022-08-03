@@ -18,17 +18,36 @@ has_data_check <- function(site_nums, parameterCd, endDate){
   return(sites_with_data)
 }
 
-filter_complete_years <- function(screen_daily_flow, complete_years){
+filter_complete_years <- function(screen_daily_flow, combine_gages, complete_years){
   
   complete_yr_count <- screen_daily_flow %>% 
     filter(!is.na(complete_yrs)) %>%  
     group_by(site_no) %>%
-    count()
+    count() %>%
+    ungroup()
   message("complete yr ok")
   
   keep_sites <- complete_yr_count %>%
+    filter(!(site_no %in% unique(unlist(combine_gages)))) %>%
     filter(n >= complete_years) %>%
     pull(site_no)
+  
+  for (i in 1:length(combine_gages$to_be_combined)) {
+    n_years_1 <- complete_yr_count %>%
+      filter(site_no == combine_gages$to_be_combined[[i]]) %>%
+      pull(n)
+    n_years_2 <- complete_yr_count %>%
+      filter(site_no == combine_gages$assigned_rep[[i]]) %>%
+      pull(n)
+    if (!(identical(n_years_1, integer(0)) || identical(n_years_2, integer(0)))) {
+      if (n_years_1 + n_years_2 >= complete_years) {
+        keep_combined_sites <- c(combine_gages$to_be_combined[[i]], 
+                                 combine_gages$assigned_rep[[i]])
+        keep_sites <- c(keep_sites, keep_combined_sites)
+      }
+    }
+  }
+  keep_sites <- unique(keep_sites)
   return(keep_sites)
 }
 
@@ -105,7 +124,7 @@ catch_download_timeout_daily <- function(time, site_num, parameterCd,
 
 get_daily_flow_log <- function(files_in, file_out) {
   message(paste('generating log for dataRetrieval daily flow request'))
-  daily_flow_list <- purrr::map(files_in, prescreen_daily_data, prov_rm = FALSE)
+  daily_flow_list <- purrr::map(files_in, prescreen_daily_data, prov_rm = TRUE)
   daily_flow_df <- bind_rows(daily_flow_list)
   daily_flow_log <- daily_flow_df %>%
     group_by(site_no) %>%
