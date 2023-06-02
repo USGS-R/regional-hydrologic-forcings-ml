@@ -1,3 +1,5 @@
+Active development moved to https://code.usgs.gov/wma/wp/regional-hydrologic-forcings-ml
+
 # regional-hydrologic-forcings-ml
 The repository contains the code pipeline used to develop machine learning models for regional prediction of hydrologic forcing functions, specifically for flood flow metrics. The FY22 focus is a rainfall-dominated flood region within and surrounding the Delaware River Basin (DRB), and a snowmelt-dominated region within and surrounding the Upper Colorado River Basin (UCOL). The steps of the pipeline are as follows: 
 
